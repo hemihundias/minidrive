@@ -18,7 +18,7 @@ import java.io.IOException;
  */
 
 public class leerJson {
-    private jsonConfig conf;
+    jsonConfig conf = new jsonConfig();
     File datos = new File("config.json");;
 
     public leerJson() {
@@ -42,7 +42,6 @@ public class leerJson {
                 Gson gson = new Gson(); 
 
                 conf = gson.fromJson(json, jsonConfig.class); 
-
             }catch (JsonSyntaxException | IOException e){
                 System.err.println(e);
             }    

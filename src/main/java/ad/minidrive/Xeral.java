@@ -15,16 +15,15 @@ import java.sql.SQLException;
  * @author Hemihundias
  */
 public class Xeral { 
-    private static final leerJson lj = new leerJson();
-    private static final operacionesBD obd = new operacionesBD();  
-    private static final jsonConfig conf = new jsonConfig();
-    private static String nombreDir; 
-    private static String dir; 
-    
+        
     public static void main(String args[]) throws FileNotFoundException, SQLException, IOException{        
-        nombreDir = ".";              
-        lj.cargaDatos();
-        obd.connect();
+        leerJson lj = new leerJson();
+        operacionesBD obd = new operacionesBD();  
+        jsonConfig conf = new jsonConfig();
+        String nombreDir = "."; 
+        String dir;               
+        
+        lj.cargaDatos();        
         obd.crearTablas();
         dir = conf.getApp().getDirectory();
         

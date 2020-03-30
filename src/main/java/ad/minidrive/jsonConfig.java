@@ -12,6 +12,7 @@ import java.io.File;
  * @author Hemihundias
  */
 public class jsonConfig {
+        
     private dbConnection dbConnection;
     private app app;
 

@@ -17,14 +17,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
 
+
 /**
  *
  * @author Hemihundias
  */
 public class operacionesBD {  
-    private static final jsonConfig conf = new jsonConfig();
+    static jsonConfig conf = new jsonConfig();
+    static Connection conn = null;
     
-    public static Connection connect() throws SQLException{
+    public void connect(){
         
         //URL y base de datos a la que nos conectamos
         String url = conf.getDbConnection().getAddress();
@@ -40,21 +42,22 @@ public class operacionesBD {
         
         //Conexión
         try {    
-            Connection conn = DriverManager.getConnection(postgres,props);
+            conn = DriverManager.getConnection(postgres,props);
             
-            return conn;
+            if(conn!=null){
+                conn.close();
+            }
             
         }catch (SQLException ex) {
-            System.err.println("No se ha podido conectar a la base de datos\n"+ex.getMessage());
-            return null;
-        }            
+            System.err.println("No se ha podido conectar a la base de datos\n"+ex.getMessage());            
+        }   
+        
     }  
     
-    public void crearTablas(){
-        
+    public void crearTablas() throws SQLException{
+        connect();       
         try {
-            Connection conn = connect();
-            
+                        
             String sqlTableCreation1 = "CREATE TABLE IF NOT EXISTS directorios (\n"
                     + "    id SERIAL,\n"
                     + "    nombre VARCHAR(255) NOT NULL,\n"
@@ -83,13 +86,13 @@ public class operacionesBD {
     }
     
     public void insertarArchivo(String nombreAr, File f) throws FileNotFoundException, SQLException, IOException{
-        Connection conn = connect();
+        connect();
         String nombreArchivo = nombreAr;
         int IdDir = 0;
         
         File file = new File(f.toString() + File.separator + nombreArchivo);
         FileInputStream fis = new FileInputStream(file);
-        String sqlId = "SELECT id FROM directorios WHERE nombre=" + f.toString().replaceAll(conf.getApp().getDirectory(), ".");
+        String sqlId = "SELECT id FROM directorios WHERE nombre= '.';";
         
         PreparedStatement ps2 = conn.prepareStatement(sqlId);
 
@@ -125,7 +128,7 @@ public class operacionesBD {
     }
     
     public void insertarDir(String nombreD) throws SQLException, IOException{
-        Connection conn = connect();
+        connect();
         //Creamos la consulta para insertar el archivo en la base de datos
         String sqlInsertDir = "INSERT INTO directorios(nombre)\n"
                 + "   VALUES (?);";
