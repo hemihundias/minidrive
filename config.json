@@ -1,0 +1,11 @@
+{
+    "dbConnection":{
+        "address":"localhost",
+        "name":"minidrive",
+        "user":"accesodatos",
+        "password":"abc123."    
+    },
+    "app":{
+        "directory":"minidrive"
+    }
+}
