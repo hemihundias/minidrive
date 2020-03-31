@@ -5,7 +5,6 @@
  */
 package ad.minidrive;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -17,33 +16,13 @@ import java.sql.SQLException;
 public class Xeral { 
         
     public static void main(String args[]) throws FileNotFoundException, SQLException, IOException{        
-        leerJson lj = new leerJson();
-        operacionesBD obd = new operacionesBD();  
-        jsonConfig conf = new jsonConfig();
-        String nombreDir = "."; 
-        String dir;               
-        
+        operaciones lj = new operaciones();                              
+        String d = "";
         lj.cargaDatos();        
-        obd.crearTablas();
-        dir = conf.getApp().getDirectory();
+        lj.crearTablas();
+        lj.existe();
+        lj.listar(d);
         
-        File f = new File(dir);
-        if (f.exists()){
-            obd.insertarDir(nombreDir);
-            File[] ficheros = f.listFiles();
-            
-            for(int x=0;x<f.listFiles().length;x++){
-                if (ficheros[x].isDirectory()){
-                    //f = new File(f.toString() + File.separator + ficheros[x].getName());
-                    //nombreDir = nombreDir + File.separator + ficheros[x].getName();
-                    //listar();
-                }else{                    
-                    obd.insertarArchivo(ficheros[x].getName(),f);                    
-                }
-            }
-        }else{
-            System.out.println("El directorio a listar no existe.");
-        }
         
     }
 }
