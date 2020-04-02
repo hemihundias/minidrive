@@ -33,7 +33,7 @@ public class operaciones {
     File datos = new File("config.json");;
     Connection conn = null;
     String nombreDir = "."; 
-    String dir;      
+    File dir;      
         
     public void cargaDatos(){
         if(datos.exists()){
@@ -119,30 +119,31 @@ public class operaciones {
             System.err.println("Error: " + ex.toString());
         }    
         conn.close();
-        String dB = "\\" + "\\";
-        dir = conf.getApp().getDirectory().replaceAll("\\",dB );
+                
     }
     
-    public void listar(String d) throws SQLException, IOException{
+    public void listar(File d) throws SQLException, IOException{
         connect();
-        d = dir;        
-        File f = new File(d);
+        d = dir;  
         
-        if (f.exists()){
+        if (d.exists()){
             insertarDir(nombreDir);
-            File[] ficheros = f.listFiles();
+            File[] ficheros = d.listFiles();
             
-            for(int x=0;x<f.listFiles().length;x++){
+            for(int x=0;x<d.listFiles().length;x++){
                 if (ficheros[x].isDirectory()){
                     
-                }else{                    
-                    insertarArchivo(ficheros[x].getName(),f);                    
+                }else {               
+                    //if(!yaExiste(nombreDir,ficheros[x].getName())){
+                        insertarArchivo(ficheros[x].getName(),d);
+                    //}
+                                        
                 }
             }
             
-            for(int x=0;x<f.listFiles().length;x++){
+            for(int x=0;x<d.listFiles().length;x++){
                 if (ficheros[x].isDirectory()){
-                    dir = ficheros[x].getAbsolutePath();
+                    dir = new File(ficheros[x].getAbsolutePath());
                     nombreDir = nombreDir + File.separator + ficheros[x].getName();
                     listar(d);
                 }else{                    
@@ -228,6 +229,7 @@ public class operaciones {
     
     public void existe() throws SQLException, IOException{
         connect();       
+        dir = new File(conf.getApp().getDirectory());
         String nom,nomD;
         int idD;
                         
@@ -241,24 +243,20 @@ public class operaciones {
             nom = rs.getString(1);
             nomD = rs.getString(2);
             idD = rs.getInt(3);
+            File direc = new File(conf.getApp().getDirectory() + nomD.replace(".","") + File.separator + nom);
             
-            dir = nomD.replaceAll(".", conf.getApp().getDirectory());
-            File fil = new File(dir + File.separator + nom);
-            System.out.println(dir);
-            if(fil.exists()){
+            if(direc.exists()){
                 
             }else{
-                recuperar(nom,idD,fil);
+                recuperar(nom,idD,direc);
             }
-            
-            
         }
         conn.close();
     }
     
     public void recuperar(String s,int i,File f) throws SQLException, FileNotFoundException, IOException{
         //Creamos a consulta para recuperar a imaxe anterior
-    String sqlGet = "SELECT a.dato FROM archivos AS a WHERE (nombre = ? AND id = ?);";
+    String sqlGet = "SELECT a.dato FROM archivos AS a WHERE (a.nombre = ? AND iddirectorio = ?);";
     PreparedStatement ps2 = conn.prepareStatement(sqlGet); 
 
     //Engadimos o nome da imaxe que queremos recuperar
@@ -280,10 +278,8 @@ public class operaciones {
     rs.close(); 
     ps2.close();
 
-    //Creamos o fluxo de datos para gardar o arquivo recuperado
-    String archGen = f.getAbsolutePath();
-    File fileOut = new File(archGen);
-    FileOutputStream fluxoDatos = new FileOutputStream(fileOut);
+    //Creamos o fluxo de datos para gardar o arquivo recuperado    
+    FileOutputStream fluxoDatos = new FileOutputStream(f);
 
     //Gardamos o arquivo recuperado
     if(arch != null){
@@ -293,4 +289,27 @@ public class operaciones {
     //cerramos o fluxo de datos de saida
     fluxoDatos.close();  
     }
+    
+    /*public boolean yaExiste(String s, String s2) throws SQLException{
+        String n;
+        int i = 0;
+        String sqlD = "SELECT d.id FROM directorios AS d WHERE nombre = '" + s + "';";
+        
+        PreparedStatement ps = conn.prepareStatement(sqlD);
+
+        ResultSet rs = ps.executeQuery();
+        
+        while(rs.next()){
+            i = rs.getInt(1);
+        }
+        
+        String sqlA = "SELECT a.nombre FROM archivos AS a INNER JOIN directorios AS d ON a.iddirectorio = '" + i + "';";
+        
+        PreparedStatement ps2 = conn.prepareStatement(sqlA);
+
+        ResultSet rs2 = ps2.executeQuery();
+        
+        return rs2.next();            
+                           
+    }*/
 }

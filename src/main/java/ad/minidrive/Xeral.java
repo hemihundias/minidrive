@@ -5,6 +5,7 @@
  */
 package ad.minidrive;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -17,11 +18,14 @@ public class Xeral {
         
     public static void main(String args[]) throws FileNotFoundException, SQLException, IOException{        
         operaciones lj = new operaciones();                              
-        String d = "";
+        File d = new File(System.getProperty("user.home"));
         lj.cargaDatos();        
-        lj.crearTablas();
+        lj.crearTablas();        
         lj.existe();
         lj.listar(d);
+        
+        
+        
         
         
     }
