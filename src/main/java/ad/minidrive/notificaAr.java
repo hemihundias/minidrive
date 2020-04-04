@@ -1,11 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package ad.minidrive;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,9 +15,13 @@ import org.postgresql.PGNotification;
  *
  * @author David Pardo
  */
+
+//Mediante esta clase se nos notifica si se ha añadido un nuevo archivo a nuestra BD. 
+//Además una vez detectado un nuevo archivo, comprueba si ese archivo existe en el 
+//directorio y de no ser así lo descarga.
 public class notificaAr extends Thread{
     private Connection conn;
-    private operaciones lj;
+    private operaciones lj = new operaciones();
     public notificaAr(Connection conn){
         this.conn = conn;
     }
@@ -40,44 +38,26 @@ public class notificaAr extends Thread{
                 PGNotification notificationAr[] = pgconn.getNotifications();
 
                 if(notificationAr != null){
-                    for(int i=0;i < notificationAr.length;i++){
-
-                        int id = Integer.parseInt(notificationAr[i].getParameter());
-                        
+                    for (PGNotification notificationAr1 : notificationAr) {
+                        int id = Integer.parseInt(notificationAr1.getParameter());
                         String sqlNotAr = "SELECT a.nombre, a.iddirectorio FROM archivos AS a WHERE a.id = ?;";
-        
                         PreparedStatement ps = conn.prepareStatement(sqlNotAr);
                         ps.setInt(1, id);
                         ResultSet rs = ps.executeQuery();
                         rs.next();
-                        String nAr = rs.getString(1);
-                        int idd = rs.getInt(2);
+                        
                         System.out.println("Nuevo archivo añadido a la base de datos: " + rs.getString(1));
                         rs.close();
                         
-                        String sqlDir = "SELECT d.nombre FROM directorios AS d WHERE d.id = ?;";
-        
-                        PreparedStatement ps2 = conn.prepareStatement(sqlDir);
-                        ps.setInt(1, idd);
-                        ResultSet rs2 = ps2.executeQuery();
-                        rs2.next();
-                        String nDir = rs2.getString(1);
-                        File file = new File(lj.getPath() + nDir.replace(".", ""));
-                        rs2.close();
-                        
-                        if(!lj.existeAr(nAr,idd)){
-                            lj.recuperarAr(nAr,id,file);
-                        }
+                        lj.confConexion();
+                        lj.existe();
                     } 
-                }    
-                //conn.close();
+                }                    
                 Thread.sleep(16000);
             }        
         } catch (InterruptedException ex) {
             Logger.getLogger(listenner.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (SQLException ex) {
-            Logger.getLogger(notificaAr.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
+        } catch (SQLException | IOException ex) {
             Logger.getLogger(notificaAr.class.getName()).log(Level.SEVERE, null, ex);
         }
     }  

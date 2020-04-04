@@ -217,7 +217,7 @@ public class operaciones {
     }
     
     //Método supletorio para recuperar el directorio raíz
-    public String getPath(){
+    public String getPath(){        
         confConexion();
         return conf.getApp().getDirectory();
     }
@@ -385,9 +385,6 @@ public class operaciones {
 
         createFunction = conn.prepareCall(sqlTableCreation3);
         createFunction.execute();
-        createFunction.close();
-               
-    }
-    
-    
+        createFunction.close();               
+    }        
 }

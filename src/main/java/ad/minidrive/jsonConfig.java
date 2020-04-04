@@ -6,6 +6,8 @@ import java.io.File;
  *
  * @author David Pardo
  */
+
+//Clase para la carga de datos desde el json
 public class jsonConfig {
         
     private dbConnection dbConnection;

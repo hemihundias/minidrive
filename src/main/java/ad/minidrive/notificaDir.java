@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package ad.minidrive;
 
 import java.io.IOException;
@@ -21,10 +16,12 @@ import org.postgresql.PGNotification;
  * @author David Pardo
  */
 
-//Esta clase 
+//Mediante esta clase se nos notifica si se ha añadido un nuevo directorio a nuestra BD. 
+//Además una vez detectada una nueva carpeta, comprueba si esa carpeta existe en el 
+//directorio y de no ser así la crea.
 public class notificaDir extends Thread{
     private Connection conn;
-    private operaciones lj;
+    private operaciones lj = new operaciones();
     public notificaDir(Connection conn){
         this.conn = conn;
     }
@@ -41,26 +38,19 @@ public class notificaDir extends Thread{
                 PGNotification notificationDir[] = pgconn.getNotifications();
 
                 if(notificationDir != null){
-                    for(int i=0;i < notificationDir.length;i++){
-
-                        int id = Integer.parseInt(notificationDir[i].getParameter());
-                        
+                    for (PGNotification notificationDir1 : notificationDir) {
+                        int id = Integer.parseInt(notificationDir1.getParameter());
                         String sqlNotDir = "SELECT d.nombre FROM directorios AS d WHERE d.id = ?;";
-        
                         PreparedStatement ps = conn.prepareStatement(sqlNotDir);
                         ps.setInt(1, id);
                         ResultSet rs = ps.executeQuery();
                         rs.next();
-                        String nDir = rs.getString(1);
                         System.out.println("Nuevo directorio añadido a la base de datos: " + rs.getString(1));
                         rs.close();
-                        
-                        if(!lj.existeDir(nDir)){
-                            lj.recuperarDir(nDir);
-                        }
+                        lj.confConexion();
+                        lj.existe();
                     } 
-                }    
-                //conn.close();
+                } 
                 Thread.sleep(15000);
             }        
         } catch (InterruptedException ex) {

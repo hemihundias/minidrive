@@ -28,7 +28,7 @@ public class listenner extends Thread{
                 
                 lj.listar(d);
                 
-                Thread.sleep(1000);
+                Thread.sleep(10000);
             }        
         } catch (IOException | InterruptedException | SQLException ex) {
             Logger.getLogger(listenner.class.getName()).log(Level.SEVERE, null, ex);
