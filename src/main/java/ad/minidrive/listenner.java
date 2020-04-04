@@ -1,59 +1,37 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package ad.minidrive;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 /**
  *
- * @author Hemihundias
+ * @author David Pardo
  */
-public class extends Thread
-{
-    private Connection conn;
-    private org.postgresql.PGConnection pgconn;
 
-    Listener(Connection conn) throws SQLException
-    {
-        this.conn = conn;
-        this.pgconn = conn.unwrap(org.postgresql.PGConnection.class);
-        Statement stmt = conn.createStatement();
-        stmt.execute("LISTEN mymessage");
-        stmt.close();
+//Esta clase es la encargada de monitorear el directorio en busca de nuevos directorios 
+//o archivos. A su constructor se pasa el directorio raíz y llama al método listar(). 
+public class listenner extends Thread{
+    private File d;
+    private operaciones lj = new operaciones();
+    
+    listenner(File d) throws SQLException{
+        this.d = d;        
     }
 
-    public void run()
-    {
-        try
-        {
-            while (true)
-            {
-                org.postgresql.PGNotification notifications[] = pgconn.getNotifications();
-
-                // If this thread is the only one that uses the connection, a timeout can be used to 
-                // receive notifications immediately:
-                // org.postgresql.PGNotification notifications[] = pgconn.getNotifications(10000);
-
-                if (notifications != null)
-                {
-                    for (int i=0; i < notifications.length; i++)
-                        System.out.println("Got notification: " + notifications[i].getName());
-                }
-
-                // wait a while before checking again for new
-                // notifications
-
-                Thread.sleep(500);
-            }
-        }
-        catch (SQLException sqle)
-        {
-            sqle.printStackTrace();
-        }
-        catch (InterruptedException ie)
-        {
-            ie.printStackTrace();
+    @Override
+    public void run(){
+        try{
+            while (true){                   
+                System.out.println("Comprobando...");
+                
+                lj.listar(d);
+                
+                Thread.sleep(1000);
+            }        
+        } catch (IOException | InterruptedException | SQLException ex) {
+            Logger.getLogger(listenner.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 }

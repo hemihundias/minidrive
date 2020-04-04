@@ -24,18 +24,18 @@ import java.util.Properties;
 
 /**
  *
- * @author Hemihundias
+ * @author David Pardo
  */
 
 public class operaciones {
+    private jsonConfig conf = new jsonConfig();
+    private final File datos = new File("config.json");;
+    private Connection conn = null;
+    private String nombreDir = ".";
     
-    jsonConfig conf = new jsonConfig();
-    File datos = new File("config.json");;
-    Connection conn = null;
-    String nombreDir = "."; 
-    File dir;      
-        
-    public void cargaDatos(){
+    //En este método cogemos los datos que se nos proporciona en el archivo config.json 
+    //para poder configurar nuestra conexión a la base de datos
+    public void confConexion(){
         if(datos.exists()){
 
             try{     
@@ -63,31 +63,32 @@ public class operaciones {
         } 
     }    
     
-    public void connect(){
+    //usando los datos extraidos mediante el método "confConexión", configuramos 
+    //nuestra conexión a la base de datos
+    public Connection connect(){
         
-        //URL y base de datos a la que nos conectamos
         String url = conf.getDbConnection().getAddress();
         String db = conf.getDbConnection().getName();
         
-        //Indicamos las propiedades de la conexión
         Properties props = new Properties();
         props.setProperty("user", conf.getDbConnection().getUser());
         props.setProperty("password", conf.getDbConnection().getPassword());
 
-        //Dirección de conexión a la base de datos
         String postgres = "jdbc:postgresql://"+url+"/"+db;
         
-        //Conexión
         try {    
             conn = DriverManager.getConnection(postgres,props);                       
-            
+            return conn;
         }catch (SQLException ex) {
-            System.err.println("No se ha podido conectar a la base de datos\n"+ex.getMessage());            
-        }   
-        
+            System.err.println("No se ha podido conectar a la base de datos\n"+ex.getMessage());
+            return null;    
+        }           
     }
     
-    public void crearTablas() throws SQLException{
+    //Aquí creamos las tablas que vamos a usar, las funciones y trigger para las 
+    //notificaciones y además se introduce al final el directorio raíz en la base 
+    //de datos mediante el método "insertarDir"
+    public void crearTablas() throws SQLException, IOException{
         connect();       
         try {
                         
@@ -115,124 +116,136 @@ public class operaciones {
             createFunction.execute();
             createFunction.close();
             
+            notificaDir();
+            notificaAr();            
+            insertarDir(nombreDir);
+            
         } catch (SQLException ex) {
             System.err.println("Error: " + ex.toString());
         }    
         conn.close();
                 
     }
-    
-    public void listar(File d) throws SQLException, IOException{
-        connect();
-        d = dir;  
         
-        if (d.exists()){
-            insertarDir(nombreDir);
-            File[] ficheros = d.listFiles();
+    //Con este método se recorre recursivamente el directorio que se le pasa como 
+    //parámetro llamando a los distintos métodos encargados de insertar los archivos y directorios
+    public void listar(File d) throws SQLException, IOException{
+        String nom;
+        if (d.exists() && d.isDirectory()){            
             
-            for(int x=0;x<d.listFiles().length;x++){
-                if (ficheros[x].isDirectory()){
-                    
-                }else {               
-                    //if(!yaExiste(nombreDir,ficheros[x].getName())){
-                        insertarArchivo(ficheros[x].getName(),d);
-                    //}
-                                        
+            for(File f:d.listFiles()){
+                if (f.isDirectory()){                    
+                    nom = f.getAbsolutePath().replace(conf.getApp().getDirectory(), ".");
+                    insertarDir(nom);
+                    listar(f);
+                }else {
+                    nom = f.getParentFile().toString().replace(getPath(), ".");
+                    insertarArchivo(f.getName(),nom,f.getAbsoluteFile());
                 }
-            }
-            
-            for(int x=0;x<d.listFiles().length;x++){
-                if (ficheros[x].isDirectory()){
-                    dir = new File(ficheros[x].getAbsolutePath());
-                    nombreDir = nombreDir + File.separator + ficheros[x].getName();
-                    listar(d);
-                }else{                    
-                                        
-                }
-            }
+            }            
         }else{
             System.out.println("El directorio a listar no existe.");
-        }
-        conn.close();
+        }        
     }
     
-    public void insertarArchivo(String nombreAr, File f) throws FileNotFoundException, SQLException, IOException{
+    //Método para la inserción de los archivos, se le pasa el nombre del archivo 
+    //a insertar, el nombre del directorio en el que se encuentra, y el path completo 
+    //del archivo. En caso de haber un nombre de archivo igual, no insertará nada
+    public void insertarArchivo(String nombreAr, String nomDir, File d) throws FileNotFoundException, SQLException, IOException{
+        connect();
+        int IdDir = 0;        
+                
+        String sqlId = "SELECT id FROM directorios WHERE nombre = '" + nomDir + "';";
         
-        String nombreArchivo = nombreAr;
-        int IdDir = 0;
-        
-        File file = new File(f.toString() + File.separator + nombreArchivo);
-        FileInputStream fis = new FileInputStream(file);
-        String sqlId = "SELECT id FROM directorios WHERE nombre = '" + nombreDir+ "';";
-        
-        PreparedStatement ps2 = conn.prepareStatement(sqlId);
+        PreparedStatement ps = conn.prepareStatement(sqlId);
 
-        ResultSet rs = ps2.executeQuery();
+        ResultSet rs = ps.executeQuery();
         
         while(rs.next()){
             IdDir = rs.getInt(1);
         }
-
-        //Creamos la consulta para insertar el archivo en la base de datos
-        String sqlInsertAr = "INSERT INTO archivos(nombre,dato,iddirectorio)"
+        ps.close();
+        if(!existeAr(nombreAr,IdDir)){
+            FileInputStream fis = new FileInputStream(d);
+            String sqlInsertAr = "INSERT INTO archivos(nombre,dato,iddirectorio)"
                 + " VALUES (?,?,?)"
                 + " ON CONFLICT (nombre) DO NOTHING;";
         
-        PreparedStatement ps = conn.prepareStatement(sqlInsertAr);
+            PreparedStatement ps2 = conn.prepareStatement(sqlInsertAr);
 
-        //Añadimos nombre archivo
-        ps.setString(1, nombreArchivo);                                      
+            ps2.setString(1, nombreAr);                                      
 
-        //Añadimos el archivo
-        ps.setBinaryStream(2, fis, (int)file.length());
-        
-        //Añadimos nombre archivo
-        ps.setInt(3, IdDir);
-        
-        //Ejecutamos la consulta
-        try{
-            ps.executeUpdate();
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
+            ps2.setBinaryStream(2, fis, (int)d.length());
+
+            ps2.setInt(3, IdDir);
+
+            try{
+                ps2.executeUpdate();
+            }catch (SQLException e){
+                System.err.println(e.getMessage());
+            }
+
+            ps2.close();
+            fis.close();
         }
         
-
-        //Cerrramos la consulta y el archivo abierto
-        ps.close();
-        fis.close();
+        conn.close();
     }
     
+    //Método para la inserción de los directorios, se le pasa el nombre del directorio 
+    //a insertar. En caso de haber otro directorio con el mismo nombre, no insertará nada.
     public void insertarDir(String nombreD) throws SQLException, IOException{
-        
-        //Creamos la consulta para insertar el archivo en la base de datos
-        String sqlInsertDir = "INSERT INTO directorios(nombre)"
+        connect();
+        if(!existeDir(nombreD)){
+            String sqlInsertDir = "INSERT INTO directorios(nombre)"
                 + "   VALUES (?)"
                 + "   ON CONFLICT (nombre) DO NOTHING;";
         
-        PreparedStatement ps = conn.prepareStatement(sqlInsertDir);
+            PreparedStatement ps = conn.prepareStatement(sqlInsertDir);
 
-        //Añadimos nombre archivo
-        ps.setString(1, nombreD);                                      
+            ps.setString(1, nombreD);
 
-
-        //Ejecutamos la consulta
-        try{
-            ps.executeUpdate();
-        }catch (SQLException e){
-            System.err.println(e.getMessage());
+            try{
+                ps.executeUpdate();
+            }catch (SQLException e){
+                System.err.println(e.getMessage());
+            }
+            ps.close();
         }
-
-        //Cerrramos la consulta
-        ps.close();  
-        
+                  
+        conn.close();
     }
     
+    //Método supletorio para recuperar el directorio raíz
+    public String getPath(){
+        confConexion();
+        return conf.getApp().getDirectory();
+    }
+    
+    //Mediante este método comprobamos al inicio de la aplicación si los directorios, 
+    //primero, y los archivos, después, de nuestra base de datos existen en el directorio. 
+    //En caso contrario, los descarga llamando a los métodos correspondientes.
     public void existe() throws SQLException, IOException{
-        connect();       
-        dir = new File(conf.getApp().getDirectory());
+        connect();
         String nom,nomD;
         int idD;
-                        
+          
+        String sqled = "SELECT d.nombre FROM directorios AS d;"; 
+
+        PreparedStatement ps = conn.prepareStatement(sqled);
+
+        ResultSet rsq = ps.executeQuery();
+        
+        while(rsq.next()){
+            nomD = rsq.getString(1);
+            
+            File dirDir = new File(getPath() + nomD.replace(".",""));
+            
+            if(!dirDir.exists()){
+                recuperarDir(nomD);
+            }            
+        }
+        
         String sqlex = "SELECT a.nombre,d.nombre,a.iddirectorio FROM archivos AS a INNER JOIN directorios AS d ON a.iddirectorio = d.id;"; 
 
         PreparedStatement ps3 = conn.prepareStatement(sqlex);
@@ -242,74 +255,139 @@ public class operaciones {
         while(rs.next()){
             nom = rs.getString(1);
             nomD = rs.getString(2);
-            idD = rs.getInt(3);
-            File direc = new File(conf.getApp().getDirectory() + nomD.replace(".","") + File.separator + nom);
+            idD = rs.getInt(3);            
+            File dirAr = new File(getPath() + nomD.replace(".","") + File.separator + nom);
             
-            if(direc.exists()){
-                
-            }else{
-                recuperar(nom,idD,direc);
+            if(!dirAr.exists()){
+                recuperarAr(nom,idD,dirAr);
             }
         }
-        conn.close();
+        conn.close();        
     }
     
-    public void recuperar(String s,int i,File f) throws SQLException, FileNotFoundException, IOException{
-        //Creamos a consulta para recuperar a imaxe anterior
-    String sqlGet = "SELECT a.dato FROM archivos AS a WHERE (a.nombre = ? AND iddirectorio = ?);";
-    PreparedStatement ps2 = conn.prepareStatement(sqlGet); 
-
-    //Engadimos o nome da imaxe que queremos recuperar
-    ps2.setString(1, s); 
-
-    //Ponemos el id del archivo a recuperar
-    ps2.setInt(2, i);
-    
-    //Executamos a consulta
-    ResultSet rs = ps2.executeQuery();
-
-    //Imos recuperando todos os bytes das imaxes
-    byte[] arch = null;
-    while (rs.next()){ 
-        arch = rs.getBytes(1); 
-    }
-
-    //Cerramos a consulta
-    rs.close(); 
-    ps2.close();
-
-    //Creamos o fluxo de datos para gardar o arquivo recuperado    
-    FileOutputStream fluxoDatos = new FileOutputStream(f);
-
-    //Gardamos o arquivo recuperado
-    if(arch != null){
-        fluxoDatos.write(arch);
-    }
-
-    //cerramos o fluxo de datos de saida
-    fluxoDatos.close();  
-    }
-    
-    /*public boolean yaExiste(String s, String s2) throws SQLException{
-        String n;
-        int i = 0;
-        String sqlD = "SELECT d.id FROM directorios AS d WHERE nombre = '" + s + "';";
+    //Método para la recuperación de archivos, al que se le pasa nombre de archivo, 
+    //id de directorio y path completo del archivo.
+    public void recuperarAr(String s,int i,File f) throws SQLException, FileNotFoundException, IOException{
         
-        PreparedStatement ps = conn.prepareStatement(sqlD);
+        String sqlGet = "SELECT a.dato FROM archivos AS a WHERE (a.nombre = ? AND iddirectorio = ?);";
+        PreparedStatement ps = conn.prepareStatement(sqlGet); 
+
+        ps.setString(1, s); 
+
+        ps.setInt(2, i);
 
         ResultSet rs = ps.executeQuery();
-        
-        while(rs.next()){
-            i = rs.getInt(1);
-        }
-        
-        String sqlA = "SELECT a.nombre FROM archivos AS a INNER JOIN directorios AS d ON a.iddirectorio = '" + i + "';";
-        
-        PreparedStatement ps2 = conn.prepareStatement(sqlA);
 
+        byte[] arch = null;
+        while (rs.next()){ 
+            arch = rs.getBytes(1); 
+        }
+
+        rs.close(); 
+        ps.close();
+ 
+        FileOutputStream flujo = new FileOutputStream(f);
+
+        if(arch != null){
+            flujo.write(arch);
+        }
+
+        flujo.close();  
+    }
+    
+    //Método para la recuperación de directorios, al que se le pasa nombre del directorio. 
+    public void recuperarDir(String s) throws SQLException, FileNotFoundException, IOException{
+        File f = new File(s.replace(".", getPath()));
+        f.mkdir();        
+    }
+    
+    //Con este método se comprueba si un directorio listado ya existe en la BD
+    public boolean existeDir(String s) throws SQLException{
+        String sqlId = "SELECT d.nombre FROM directorios AS d WHERE d.nombre = ?;";
+        
+        PreparedStatement ps = conn.prepareStatement(sqlId);
+
+        ps.setString(1, s);
+        
+        ResultSet rs = ps.executeQuery();
+        
+        return rs.next();    
+    }
+    
+    //Con este método se comprueba si un archivo listado ya existe en la BD
+    public boolean existeAr(String s,int i) throws SQLException{              
+        String sqlAr = "SELECT a.nombre FROM archivos AS a WHERE (a.nombre = ? AND a.iddirectorio = ?);";
+        
+        PreparedStatement ps2 = conn.prepareStatement(sqlAr);
+
+        ps2.setString(1, s); 
+
+        ps2.setInt(2, i);
+    
         ResultSet rs2 = ps2.executeQuery();
         
-        return rs2.next();            
-                           
-    }*/
+        return rs2.next();
+    }
+    
+    //Se crea la función y el trigger asociado para las notificaciones de nuevos 
+    //archivos añadidos a la BD
+    public void notificaAr() throws SQLException{
+        String sqlTableCreation = "CREATE OR REPLACE FUNCTION notificaAr()"
+                + "    RETURNS trigger AS "
+                + "    $BODY$"
+                + "    BEGIN" 
+                + "    PERFORM pg_notify('nuevo_archivo',NEW.id::text);" 
+                + "    RETURN NEW;" 
+                + "    END;" 
+                + "    $BODY$"
+                + "    LANGUAGE plpgsql;";
+
+        CallableStatement createFunction = conn.prepareCall(sqlTableCreation);
+        createFunction.execute();
+        createFunction.close();
+                    
+        String sqlTableCreation2 = "DROP TRIGGER IF EXISTS nuevo_archivo ON archivos;"
+                + "    CREATE TRIGGER nuevo_archivo "
+                + "    AFTER INSERT "
+                + "    ON archivos " 
+                + "    FOR EACH ROW " 
+                + "    EXECUTE PROCEDURE notificaAr();";
+
+        createFunction = conn.prepareCall(sqlTableCreation2);
+        createFunction.execute();
+        createFunction.close();                
+               
+    }
+    
+    //Se crea la función y el trigger asociado para las notificaciones de nuevos 
+    //directorios añadidos a la BD
+    public void notificaDir() throws SQLException{
+        String sqlTableCreation = "CREATE OR REPLACE FUNCTION notificaDir()"
+                + "    RETURNS trigger AS "
+                + "    $BODY$"
+                + "    BEGIN" 
+                + "    PERFORM pg_notify('nuevo_directorio',NEW.id::text);" 
+                + "    RETURN NEW;" 
+                + "    END;" 
+                + "    $BODY$"
+                + "    LANGUAGE plpgsql;";
+
+        CallableStatement createFunction = conn.prepareCall(sqlTableCreation);
+        createFunction.execute();
+        createFunction.close();
+                    
+        String sqlTableCreation3 = "DROP TRIGGER IF EXISTS nuevo_directorio ON directorios;"
+                + "    CREATE TRIGGER nuevo_directorio "
+                + "    AFTER INSERT "
+                + "    ON directorios " 
+                + "    FOR EACH ROW " 
+                + "    EXECUTE PROCEDURE notificaDir();";
+
+        createFunction = conn.prepareCall(sqlTableCreation3);
+        createFunction.execute();
+        createFunction.close();
+               
+    }
+    
+    
 }
