@@ -95,8 +95,9 @@ public class jsonConfig {
         }
 
         public String getDirectory() {
-            return System.getProperty("user.home") + File.separator + directory;
             
+            //return System.getProperty("user.home") + File.separator + directory;
+            return directory;
         }
       
         
