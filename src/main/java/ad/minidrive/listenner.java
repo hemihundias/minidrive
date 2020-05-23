@@ -25,8 +25,8 @@ public class listenner extends Thread{
         try{
             while (true){                   
                 System.out.println("Comprobando...");
-                
-                lj.listar(d);
+                lj.getPath();
+                lj.listar(d);          
                 
                 Thread.sleep(10000);
             }        

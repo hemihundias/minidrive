@@ -80,7 +80,7 @@ public class operaciones {
             conn = DriverManager.getConnection(postgres,props);                       
             return conn;
         }catch (SQLException ex) {
-            System.err.println("No se ha podido conectar a la base de datos\n"+ex.getMessage());
+            System.err.println("No se ha podido conectar a la base de datos\n" + ex.getMessage());
             return null;    
         }           
     }

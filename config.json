@@ -6,6 +6,6 @@
         "password":"abc123."    
     },
     "app":{
-        "directory":"/home/manu/ad/proba"
+        "directory":"ad/proba"
     }
 }
